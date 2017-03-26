@@ -39,7 +39,7 @@ def getDateTime(url, dataTime, headersTime):
 def getEnergySum(url, dataTime, headersTime, t0, t1):
     sumEnergy = 0
     timestp = 0
-    sensorId = param[pine]['sensorId']
+    sensorId = param[node]['sensorId']
 
     try:
         result = requests.post(url + '/api/' + str(sensorId) + '/get/watts/by_time/' + str(t0) + '/' + str(t1), headers=headersTime, data=dataTime)
@@ -87,27 +87,27 @@ ser = serial.Serial(param['relay']['serial'], 9600)
 relai4_status = 0
 lampStatus = 0
 
-# Defintion of pine used to update data
-pine = param['usedPine']['id']
-pineURL = param[pine]['url']
-pineLogin = param[pine]['login']
-pinePswd = param[pine]['password']
+# Defintion of node used to update data
+node = param['usedNode']['id']
+nodeURL = param[node]['url']
+nodeLogin = param[node]['login']
+nodePswd = param[node]['password']
 headersTime = {'Content-Type': 'application/json', }
-dataTime = 'login=' + pineLogin + '&password=' + pinePswd
+dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
 # light bulb init
 ## getting energy balance
-data = '{"from":"' + param[pine]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + param['contract']['fctEnergyBalance'] + '"}, "latest"'
+data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + param['contract']['fctEnergyBalance'] + '"}, "latest"'
 result = ethrequest('"eth_call"', data)
 EnergyBalance = int(result['result'], 0)
 print(EnergyBalance)
 
-if EnergyBalance >= param['pine2']['limit'] :
+if EnergyBalance >= param['node2']['limit'] :
     # the bulb is on
     turnRelay("4")
     lampStatus = int(ser.read())
 
-time0 = getDateTime(pineURL, dataTime, headersTime)
+time0 = getDateTime(nodeURL, dataTime, headersTime)
 
 
 while 1:
@@ -115,8 +115,8 @@ while 1:
     time.sleep(20)
 
     # getting energy produced or consumed
-    time1 = getDateTime(pineURL, dataTime, headersTime)
-    sumWatt = getEnergySum(pineURL, dataTime, headersTime, time0, time1)
+    time1 = getDateTime(nodeURL, dataTime, headersTime)
+    sumWatt = getEnergySum(nodeURL, dataTime, headersTime, time0, time1)
 
     print('time : ' + time.strftime("%D %H:%M:%S", time.localtime(int(time1))) + ', sumWatt = ' + str(sumWatt))
 
@@ -125,32 +125,32 @@ while 1:
     if sumWatt !=0 :
 
         # Consumer
-        if param[pine]['typ'] == 'C':
+        if param[node]['typ'] == 'C':
 
             # updating Energy balance (consumer)
             hashData = param['contract']['fctConsumeEnergy'] + padhexa(hex(sumWatt))
-            data = '{"from":"' + param[pine]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
+            data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
             result = ethrequest('"eth_sendTransaction"', data)
             print(result)
 
             # getting the energy balance
-            data = '{"from":"' + param[pine]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + \
+            data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + \
                    param['contract']['fctEnergyBalance'] + '"}, "latest"'
             result = ethrequest('"eth_call"', data)
             EnergyBalance = int(result['result'], 0)
 
             # if energy balance is too low, a energy transaction is triggered
-            if EnergyBalance < param[pine]['limit']:
+            if EnergyBalance < param[node]['limit']:
                 print(lampStatus)
                 if lampStatus == 1:
                     print('yes')
                     turnRelay("4")
                     lampStatus = int(ser.read())
                 watt = 350 # to adjust
-                # for DEBUG/TESTING, pine1 is selected by default
-                seller = param['pine1']['address'].replace('0x', '')
+                # for DEBUG/TESTING, node1 is selected by default
+                seller = param['node1']['address'].replace('0x', '')
                 hashData = param['contract']['fctBuyEnergy'] + padaddress(seller) + padhexa(hex(watt))
-                data = '{"from":"' + param[pine]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
+                data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
                 result = ethrequest('"eth_sendTransaction"', data)
                 print(result)
 
@@ -164,6 +164,6 @@ while 1:
         else:
             # to update Energy balance (producer)
             hashData = param['contract']['fctSetProduction'] + padhexa(hex(sumWatt))
-            data = '{"from":"' + param[pine]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
+            data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
             result = ethrequest('"eth_sendTransaction"', data)
             print(result)
