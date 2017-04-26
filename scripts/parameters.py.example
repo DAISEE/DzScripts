@@ -1,0 +1,42 @@
+contract:
+  address: '0xeC0885668bDDEa36aD16108a4E2a94e6E81744fa'
+  fctEnergyBalance: '0x99e1d301'
+  fctConsumeEnergy:  '0x298d65a1'
+  fctSetProduction:  '0x567cc2b6'
+  fctBuyEnergy: '0x2290db50'
+  node: '0.0.0.0'
+  token: '0xdFf8C10F1E64B592cF902e82C948E2ddF9f49aaF'
+node1:
+  address: ''
+  accountpswd: ''
+  url: ''
+  sensorId: 1
+  typ: 'C'
+  login: ''
+  password: ''
+  limit: 1000
+  relay: 0
+node2:
+  address: ''
+  accountpswd: ''
+  url: ''
+  sensorId: 1
+  typ: 'P'
+  login: ''
+  password: ''
+  limit: 1000
+  relay : 4
+node3:
+  address: ''
+  accountpswd: ''
+  url: ''
+  sensorId: 1
+  typ: 'P'
+  login: ''
+  password: ''
+  limit: 1000
+  relay : 3
+usedNode:
+  id:  'node1'
+relay:
+  serial: '/dev/ttyACM2'

@@ -10,7 +10,8 @@ def padhexa(s):
 
 
 def padaddress(a):
-    a = '000000000000000000000000' + a.strip('0x')
+    a = a.strip('0x')
+    a = a.rjust(64, '0')
     return a
 
 
@@ -20,10 +21,14 @@ def ethrequest(method, params):
            '"method":' + method + ',' \
            '"params":[' + params + '],' \
            '"id":1}'
-    print(data)
     result = requests.post(host, headers=headers, data=data)
-    print(result)
-    parsed_json = json.loads(result.text) # TODO : add exception
+    try:
+        parsed_json = json.loads(result.text)
+    except:
+        parsed_json = ''
+    else:
+        print(' > result.text = ' + str(result.text))
+
     return parsed_json
 
 
@@ -46,13 +51,12 @@ def getEnergySum(url, dataTime, headersTime, t0, t1):
     except json.JSONDecodeError as e:
         print(e)
     else:
-        print(result)
         parsed_json = json.loads(result.text)
-        print(parsed_json)
         for n in range(0, len(parsed_json['data'])):
+            print("parsed_json['data'][n]['timestamp'] : " + str(parsed_json['data'][n]['timestamp']))
             # TODO : check data from citizenwatt
             if timestp < parsed_json['data'][n]['timestamp']:
-                watt = int(parsed_json['data'][n]['value']/100) # /100 for test and debug
+                watt = int(parsed_json['data'][n]['value'])
                 sumEnergy += watt
                 timestp = parsed_json['data'][n]['timestamp']
     return sumEnergy
@@ -92,6 +96,7 @@ node = param['usedNode']['id']
 nodeURL = param[node]['url']
 nodeLogin = param[node]['login']
 nodePswd = param[node]['password']
+tokenContract = param['contract']['token']
 headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
@@ -100,7 +105,6 @@ dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + param['contract']['fctEnergyBalance'] + '"}, "latest"'
 result = ethrequest('"eth_call"', data)
 EnergyBalance = int(result['result'], 0)
-print(EnergyBalance)
 
 if EnergyBalance >= param['node2']['limit'] :
     # the bulb is on
@@ -112,7 +116,7 @@ time0 = getDateTime(nodeURL, dataTime, headersTime)
 
 while 1:
     # delay to define
-    time.sleep(20)
+    time.sleep(16)
 
     # getting energy produced or consumed
     time1 = getDateTime(nodeURL, dataTime, headersTime)
@@ -127,16 +131,25 @@ while 1:
         # Consumer
         if param[node]['typ'] == 'C':
 
+            # unlock account
+            print('Unlock Account')
+            data = '"' + param[node]['address'] + '","' + param[node]['accountpswd'] + '",null'
+            result = ethrequest('"personal_unlockAccount"', data)
+            print(' > result = ' + str(result))
+
             # updating Energy balance (consumer)
+            print('ConsumeEnergy')
             hashData = param['contract']['fctConsumeEnergy'] + padhexa(hex(sumWatt))
             data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
             result = ethrequest('"eth_sendTransaction"', data)
-            print(result)
+            print(' > result = ' + str(result))
 
             # getting the energy balance
+            print('Get Energy Balance')
             data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + \
                    param['contract']['fctEnergyBalance'] + '"}, "latest"'
             result = ethrequest('"eth_call"', data)
+            print(' > result = ' + str(result))
             EnergyBalance = int(result['result'], 0)
 
             # if energy balance is too low, a energy transaction is triggered
@@ -146,15 +159,24 @@ while 1:
                     print('yes')
                     turnRelay("4")
                     lampStatus = int(ser.read())
-                watt = 350 # to adjust
-                # for DEBUG/TESTING, node1 is selected by default
-                seller = param['node1']['address'].replace('0x', '')
-                hashData = param['contract']['fctBuyEnergy'] + padaddress(seller) + padhexa(hex(watt))
+
+                # unlock account
+                print('Unlock Account')
+                data = '"' + param[node]['address'] + '","' + param[node]['accountpswd'] + '",null'
+                result = ethrequest('"personal_unlockAccount"', data)
+                print(' > result = ' + str(result))
+
+                print('Buy Energy')
+                # beware of tokens allowed
+                watt = 200 # to adjust
+                # for DEBUG/TESTING, node2 is selected by default
+                seller = param['node2']['address'].replace('0x', '')
+                hashData = param['contract']['fctBuyEnergy'] + padaddress(tokenContract) + padaddress(seller) + padhexa(hex(watt))
                 data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
                 result = ethrequest('"eth_sendTransaction"', data)
-                print(result)
+                print(' > result = ' + str(result))
 
-                time.sleep(2)
+                #time.sleep(2)
 
                 turnRelay("4")
                 lampStatus = int(ser.read())
@@ -162,8 +184,14 @@ while 1:
 
         # Producer
         else:
+            # unlock account
+            print('Unlock Account')
+            data = '"' + param[node]['address'] + '","' + param[node]['accountpswd'] + '",null'
+            result = ethrequest('"personal_unlockAccount"', data)
+
             # to update Energy balance (producer)
+            print('SetProduction')
             hashData = param['contract']['fctSetProduction'] + padhexa(hex(sumWatt))
             data = '{"from":"' + param[node]['address'] + '","to":"' + param['contract']['address'] + '","data":"' + hashData + '"}'
             result = ethrequest('"eth_sendTransaction"', data)
-            print(result)
+            print(' > result = ' + str(result))
