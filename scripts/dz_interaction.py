@@ -167,7 +167,7 @@ while 1:
                 print(' > result = ' + str(result))
 
                 print('Buy Energy')
-                # beware of tokens allowed
+                # beware of tokens allowed (see function approve() in token smart contract)
                 watt = 200 # to adjust
                 # for DEBUG/TESTING, node2 is selected by default
                 seller = param['node2']['address'].replace('0x', '')
@@ -176,7 +176,7 @@ while 1:
                 result = ethrequest('"eth_sendTransaction"', data)
                 print(' > result = ' + str(result))
 
-                #time.sleep(2)
+                time.sleep(2)
 
                 turnRelay("4")
                 lampStatus = int(ser.read())
