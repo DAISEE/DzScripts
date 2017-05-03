@@ -24,7 +24,7 @@ def ethrequest(method, params):
     result = requests.post(host, headers=headers, data=data)
     try:
         parsed_json = json.loads(result.text)
-    except:
+    except Exception:
         parsed_json = ''
     else:
         print(' > result.text = ' + str(result.text))
@@ -76,7 +76,7 @@ def turnRelay(relai):
 
 with open("parameters.yml", 'r') as stream:
     try:
-        param = yaml.load(stream)
+        param = yaml.safe_load(stream)
     except yaml.YAMLError as e:
         print(e)
 

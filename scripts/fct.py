@@ -7,7 +7,7 @@ import yaml
 def loadparam():
     with open("parameters.yml", 'r') as stream:
         try:
-            param = yaml.load(stream)
+            param = yaml.safe_load(stream)
         except yaml.YAMLError as e:
             print(e)
             sys.exit(1)
@@ -18,7 +18,7 @@ def loadparam():
 def loadabi(jsonfile):
     with open(jsonfile) as data_file:
         try:
-            abi = json.load(data_file)
+            abi = json.safe_load(data_file)
         except json.JSONDecodeError as e:
             print(e)
             sys.exit(1)
@@ -57,13 +57,19 @@ def getEnergySum(url, sensorId, dataTime, headersTime, t0, t1):
                 timestp = parsed_json['data'][n]['timestamp']
     return sumEnergy
 
-def turnRelay(relai):
-    global relai4_status
 
-    if(relai == "4"):
-        if relai4_status == 0:
-            ser.write(str("4").encode())
-            relai4_status = 1
-        else:
-            ser.write(str("4").encode())
-            relai4_status = 0
+def switchEnergy(myEnergy, nodeChannel, sellerChannel):
+
+    # the node consumes its "own" energy :
+    # - nodeChannel is NC
+    # - sellerChannel is NO
+    if myEnergy:
+        GPIO.output(Relay_channel[nodeChannel], GPIO.HIGH)
+        GPIO.output(Relay_channel[sellerChannel], GPIO.HIGH)
+    # the node consumes seller's energy :
+    # - nodeChannel 0 is now open
+    # - sellerChannel is now closed
+    else:
+        # node uses seller energy
+        GPIO.output(Relay_channel[nodeChannel], GPIO.LOW)
+        GPIO.output(Relay_channel[sellerChannel], GPIO.LOW)
