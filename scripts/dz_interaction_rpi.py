@@ -118,7 +118,7 @@ while 1:
                     print('ERROR - function buyEnergy : ' + str(e))
                 else:
                     print(' > result = ' + str(result))
-                    fct.switchEnergy(False, 0, 1)
+                    switchEnergy(False)
 
         # Producer
         else:
