@@ -3,6 +3,19 @@ import fct
 import time
 import RPi.GPIO as GPIO
 
+
+def switchEnergy(myEnergy):
+
+    print('myEnergy = ' + str(myEnergy))
+    # own energy (channel 0 NC, channel 1 NO)
+    if myEnergy:
+        GPIO.output(Relay_channel[0], GPIO.LOW)
+        GPIO.output(Relay_channel[1], GPIO.LOW)
+    else:
+        # node uses seller energy
+        GPIO.output(Relay_channel[0], GPIO.HIGH)
+        GPIO.output(Relay_channel[1], GPIO.HIGH)
+
 param = fct.loadparam()
 
 # Connection to Ethereum
@@ -35,20 +48,19 @@ print('Get Energy Balance')
 EnergyBalance = daisee.call({'from': param[node]['address']}).getEnergyBalance()
 print(EnergyBalance)
 
-if EnergyBalance >= param['node2']['limit']:
+if EnergyBalance >= param['node2']['limit'] :
     # LED on
-    GPIO.output(Relay_channel[0], GPIO.HIGH)
     myEnergy = True
+    switchEnergy(myEnergy)
 else:
     # LED off
-    GPIO.output(Relay_channel[0], GPIO.LOW)
     myEnergy = False
+    switchEnergy(myEnergy)
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime)
 bEnergy = 0
 
 while 1:
-
     # delay to define
     time.sleep(16)
 
