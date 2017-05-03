@@ -101,7 +101,7 @@ while 1:
                 print(' > unlockOK = ' + str(unlockOK))
 
                 print('Buy Energy')
-                # attention à l'allowance
+                # beware of tokens allowed (see function approve() in token smart contract)
                 watt = 200 # to adjust
                 # for DEBUG/TESTING, node2 is selected by default
                 seller = param['node2']['address'].replace('0x', '')

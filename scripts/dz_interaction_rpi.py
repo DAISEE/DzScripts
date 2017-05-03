@@ -108,6 +108,7 @@ while 1:
                 print(' > unlockOK = ' + str(unlockOK))
 
                 print('Buy Energy')
+                # beware of tokens allowed (see function approve() in token smart contract)
                 # watt : to adjust
                 watt = 200
                 # for DEBUG/TESTING, node2 is selected by default
