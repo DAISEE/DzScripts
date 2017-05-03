@@ -1,32 +1,33 @@
 from web3 import Web3, KeepAliveRPCProvider
 import fct
-import serial
 import time
+import RPi.GPIO as GPIO
+
+
+def switchEnergy(myEnergy):
+
+    print('myEnergy = ' + str(myEnergy))
+    # own energy (channel 0 NC, channel 1 NO)
+    if myEnergy:
+        GPIO.output(Relay_channel[0], GPIO.LOW)
+        GPIO.output(Relay_channel[1], GPIO.LOW)
+    else:
+        # node uses seller energy
+        GPIO.output(Relay_channel[0], GPIO.HIGH)
+        GPIO.output(Relay_channel[1], GPIO.HIGH)
 
 param = fct.loadparam()
-
-def turnRelay(relai):
-    global relai4_status
-
-    if(relai == "4"):
-        if relai4_status == 0:
-            ser.write(str("4").encode())
-            relai4_status = 1
-        else:
-            ser.write(str("4").encode())
-            relai4_status = 0
 
 # Connection to Ethereum
 web3 = Web3(KeepAliveRPCProvider(host=param['contract']['node'], port='8545'))
 
 # connection to the relay
-ser = serial.Serial(param['relay']['serial'], 9600)
+# RPI.GPIO
+Relay_channel = [17, 18]
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(Relay_channel, GPIO.OUT, initial=GPIO.LOW)
 
-# initialisation # to update
-relai4_status = 0
-lampStatus = 0
-
-#node parameters
+# Node parameters
 node = param['usedNode']['id']
 nodeAddress = param[node]['address']
 nodeURL = param[node]['url']
@@ -41,19 +42,23 @@ dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 daiseeAbi = fct.loadabi('daisee.sol.json')
 daisee = web3.eth.contract(abi=daiseeAbi, address=param['contract']['address'])
 
-# light bulb init
-## getting energy balance
+# LED init
+# getting energy balance
 print('Get Energy Balance')
 EnergyBalance = daisee.call({'from': param[node]['address']}).getEnergyBalance()
 print(EnergyBalance)
 
 if EnergyBalance >= param['node2']['limit'] :
-    # the bulb is on
-    turnRelay("4")
-    lampStatus = int(ser.read())
+    # LED on
+    myEnergy = True
+    switchEnergy(myEnergy)
+else:
+    # LED off
+    myEnergy = False
+    switchEnergy(myEnergy)
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime)
-
+bEnergy = 0
 
 while 1:
     # delay to define
@@ -67,7 +72,7 @@ while 1:
 
     time0 = time1
 
-    if sumWatt !=0:
+    if sumWatt != 0:
 
         # Consumer
         if param[node]['typ'] == 'C':
@@ -82,6 +87,11 @@ while 1:
             result = daisee.transact({'from': nodeAddress}).consumeEnergy(sumWatt)
             print(' > result = ' + str(result))
 
+            if not myEnergy:
+                bEnergy = bEnergy + sumWatt
+                if bEnergy > 200:
+                    myEnergy = True
+
             # getting the energy balance
             print('Get Energy Balance')
             EnergyBalance = daisee.call({'from': param[node]['address']}).getEnergyBalance()
@@ -89,11 +99,8 @@ while 1:
 
             # if energy balance is too low, a energy transaction is triggered
             if EnergyBalance < param[node]['limit']:
-                print(lampStatus)
-                if lampStatus == 1:
-                    print('yes')
-                    turnRelay("4")
-                    lampStatus = int(ser.read())
+
+                myEnergy = False
 
                 # unlock account
                 print('Unlock Account')
@@ -102,17 +109,17 @@ while 1:
 
                 print('Buy Energy')
                 # beware of tokens allowed (see function approve() in token smart contract)
-                watt = 200 # to adjust
+                # watt : to adjust
+                watt = 200
                 # for DEBUG/TESTING, node2 is selected by default
-                seller = param['node2']['address'].replace('0x', '')
-                ret = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract, seller, watt)
-                print(' > result = ' + str(result))
-
-                time.sleep(2)
-
-                turnRelay("4")
-                lampStatus = int(ser.read())
-                print(lampStatus)
+                seller = param['node2']['address']
+                try:
+                    ret = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract, seller, watt)
+                except Exception as e:
+                    print('ERROR - function buyEnergy : ' + str(e))
+                else:
+                    print(' > result = ' + str(result))
+                    switchEnergy(False)
 
         # Producer
         else:
