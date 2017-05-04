@@ -1,7 +1,7 @@
 # Scripts
 Scripts connecting the CitizenWatt Application, Ethereum and a relay.
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/5c7c3c3bf21a415eb19f2d69556c0612)](https://www.codacy.com/app/SamR1/Scripts?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=DAISEE/Scripts&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/1f4407d50c964153a6aec1545a49a378)](https://www.codacy.com/app/SamR1/Scripts?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=DAISEE/Scripts&amp;utm_campaign=Badge_Grade)
 
 ## Description 
 Two scripts are present :
