@@ -1,0 +1,22 @@
+contract:
+  address: ''
+  node: ''
+  token: ''
+node:
+  address: ''
+  accountpswd: ''
+  url: ''
+  sensorId: 1
+  typ: 'C'
+  login: ''
+  password: ''
+  limit: 1000
+  channel: 0
+sellers:
+  seller1:
+    account: ''
+    channel: 1
+relay:
+  host: ''
+  readingPort:
+  updatePort:
