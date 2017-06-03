@@ -6,12 +6,15 @@ import yaml
 def read_data(relay):
     # relay
     # format: list
-    # [0, 1]
+    # example: [0, 1]
 
     relayState = {}
-    for channel in relay.items():
+    for channel in relay:
         print(channel)
-        relayState[channel] = GPIO.input(Relay_channel[channel])
+        if GPIO.input(Relay_channel[channel]) == 0:
+            relayState[channel] = False
+        else:
+            relayState[channel] = True
     print(relayState)
     return str(relayState)
 
@@ -19,7 +22,7 @@ def read_data(relay):
 def switch_energy(relay):
 
     # format: dict
-    # {0: False, 1: True}
+    # example: {0: False, 1: True}
     try:
         for channel, state in relay.items():
             print(channel, state)
@@ -50,12 +53,20 @@ while True:
         if response != "":
             print('=====================')
             data = response.decode()
-            if data == "ReadDATA":
-                listChannels = data.split
+            data = data.split("|")
+            print(data)
+            if data[0] == "ReadDATA":
+                print("=> read_data()")
+                listChannels = data[1]
+                listChannels = listChannels.split(",")
+                listChannels = list(map(int, listChannels))
+                print(listChannels)
+                #listChannels = [0, 1]
                 state = read_data(listChannels)
                 client.send(str.encode(state))
             else:
-                state = yaml.load(data)
+                print("=> switch_energy()")
+                state = yaml.load(data[0])
                 success = switch_energy(state)
                 client.send(str.encode(str(success)))
             print('+++++++++++++++++++++')

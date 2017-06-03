@@ -24,20 +24,17 @@ headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
 # > Sellers nodes to which the user IS CONNECTED (may differ from vendors to whom the user purchased energy)
-# > sellers have to be defined (not automatically detected)
+# > sellers have to be defined in parameter file (not automatically detected)
 # > for now only 2 nodes are used => 1 seller
+nodeChannel = param['node']['channel']
 connectedSellers = param['sellers']
 
 relaySellersChannels = []
 listConnectedSellers = []
 
-nodeChannel = param['node']['channel']
-# relaySellersChannels.append(nodeChannel)  # TODO : to remove
-
 for seller in connectedSellers.items():
-    print(seller[1]['account'])
     listConnectedSellers.append(seller[1]['account'])
-    relaySellersChannels.append(seller[1]['channels'])
+    relaySellersChannels.append(seller[1]['channel'])
 
 # > Relay info
 relayHost = param['relay']['host']
@@ -51,48 +48,16 @@ daiseeAddress = param['contract']['address']
 daiseeAbi = fct.loadabi('daisee.sol.json')
 daisee = web3.eth.contract(abi=daiseeAbi, address=daiseeAddress)
 
-# > Getting energy purchased
-nbSellers = daisee.call().nbSellers()
-
-i = 0
-totalEnergy = []
-
-while i < nbSellers:
-    print(i)
-
-    sellerAddress = daisee.call().sellerIndex(i)
-
-    if sellerAddress in listConnectedSellers:
-
-        allowance = daisee.call().allowance(sellerAddress, nodeAddress)
-        consumptionFromSeller = daisee.call().energyConsumption(nodeAddress, sellerAddress)
-        totalPurchasedEnergy = allowance + consumptionFromSeller
-
-        energyPurchased = {}
-
-        if totalPurchasedEnergy > 0:
-            energyPurchased['sellerAddress'] = sellerAddress
-            energyPurchased['allowance'] = allowance
-
-            totalEnergy.append(energyPurchased)
-
-            print('energyPurchased = ' + str(energyPurchased))
-            print('totalEnergy = ' + str(totalEnergy))
-            print('')
-
-    i += 1
-
-
 # > Getting the state of relay
-# default : relay state = False
-# The user consumes his own energy (i.e. from his own solar panel or his "provider" (EDF,...)) => relay channel = NC
+# Default : relay state = False
+# The user consumes his own energy (i.e. from his own solar panel or his "provider" (<> sellers) => relay channel = NC
 # Sellers channels : NO
 # Energy form one seller at a time
 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 socket.connect((relayHost, relayReadingPort))
 print("Socket relay - Connection on {}".format(relayReadingPort))
 
-socket.send(b"ReadDATA")
+socket.send(b"ReadDATA|0,1")
 resp = socket.recv(255)
 print(resp.decode())
 
@@ -108,13 +73,24 @@ if nodeChannel:
 else:
     myEnergy = True  # default : state 0 and NC
 
-for channel in relaySellersChannels:
-    if listStates[channel]:  # if NO channel state = 1, energy is provided
-        currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
+if not myEnergy: # one of sellers is connected
+    for channel in relaySellersChannels:
+        if listStates[channel]:  # if channel state = 1, energy is provided
+            currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
+            # control that user can still consume energy
+            allowance = daisee.call().allowance(currentSeller, nodeAddress)
+            print("allowance = " + str(allowance))
+            if allowance <= 0 :
+                socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                socket.connect((relayHost, relayReadingPort))
+                print("Socket relay - Connection on {}".format(relayReadingPort))
 
-# control that user can consume energy
+                socket.send(b"{0: False, 1: False}")
+                resp = socket.recv(255)
+                print(resp.decode())
 
-
+                print("Close")
+                socket.close()
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime)   # TODO : better save and use the latest time processed
 
