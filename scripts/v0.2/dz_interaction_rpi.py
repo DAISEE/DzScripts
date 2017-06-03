@@ -23,7 +23,8 @@ sensorId = param['node']['sensorId']
 headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
-# > Sellers nodes to which the user IS CONNECTED (may differ from vendors to whom the user purchased energy)
+# > Sellers nodes to which the user IS CONNECTED through the relay (may differ from vendors to whom the user purchased
+# energy on the blockchain)
 # > sellers have to be defined in parameter file (not automatically detected)
 # > for now only 2 nodes are used => 1 seller
 nodeChannel = param['node']['channel']
@@ -80,12 +81,14 @@ if not myEnergy: # one of sellers is connected
             # control that user can still consume energy
             allowance = daisee.call().allowance(currentSeller, nodeAddress)
             print("allowance = " + str(allowance))
-            if allowance <= 0 :
+            if allowance <= 0:
+                
                 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 socket.connect((relayHost, relayReadingPort))
                 print("Socket relay - Connection on {}".format(relayReadingPort))
 
-                socket.send(b"{0: False, 1: False}")
+                data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
+                socket.send(data.encode())
                 resp = socket.recv(255)
                 print(resp.decode())
 
