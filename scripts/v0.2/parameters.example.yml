@@ -18,5 +18,5 @@ sellers:
     channel: 1
 relay:
   host: ''
-  readingPort:
-  updatePort:
+  port: ''
+

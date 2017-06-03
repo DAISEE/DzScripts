@@ -39,8 +39,7 @@ for seller in connectedSellers.items():
 
 # > Relay info
 relayHost = param['relay']['host']
-relayReadingPort = param['relay']['readingPort']
-relayUpdatePort = param['relay']['updatePort']
+relayPort = param['relay']['port']
 
 
 # Init
@@ -55,8 +54,8 @@ daisee = web3.eth.contract(abi=daiseeAbi, address=daiseeAddress)
 # Sellers channels : NO
 # Energy form one seller at a time
 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.connect((relayHost, relayReadingPort))
-print("Socket relay - Connection on {}".format(relayReadingPort))
+socket.connect((relayHost, relayPort))
+print("Socket relay - Connection on {}".format(relayPort))
 
 socket.send(b"ReadDATA|0,1")
 resp = socket.recv(255)
@@ -74,18 +73,23 @@ if nodeChannel:
 else:
     myEnergy = True  # default : state 0 and NC
 
+
 if not myEnergy: # one of sellers is connected
     for channel in relaySellersChannels:
         if listStates[channel]:  # if channel state = 1, energy is provided
+
             currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
+
             # control that user can still consume energy
+            # if not, switch to the user provider
             allowance = daisee.call().allowance(currentSeller, nodeAddress)
             print("allowance = " + str(allowance))
+
             if allowance <= 0:
-                
+
                 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                socket.connect((relayHost, relayReadingPort))
-                print("Socket relay - Connection on {}".format(relayReadingPort))
+                socket.connect((relayHost, relayPort))
+                print("Socket relay - Connection on {}".format(relayPort))
 
                 data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
                 socket.send(data.encode())
@@ -94,6 +98,9 @@ if not myEnergy: # one of sellers is connected
 
                 print("Close")
                 socket.close()
+
+                currentSeller = ""
+
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime)   # TODO : better save and use the latest time processed
 
