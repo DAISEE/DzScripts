@@ -4,3 +4,4 @@ scripts/parameters.yml
 /tests/
 scripts/__pycache__/
 /scripts/v0.2/parameters.yml
+scripts/v0.2/__pycache__/
