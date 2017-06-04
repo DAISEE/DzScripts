@@ -30,7 +30,7 @@ def readData(channels):
 
     closeConnection(s)
 
-    listStates = yaml.load(resp)
+    listStates = yaml.safe_load(resp)
     return listStates
 
 
