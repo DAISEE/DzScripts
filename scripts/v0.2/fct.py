@@ -18,7 +18,7 @@ def loadparam():
 def loadabi(jsonfile):
     with open(jsonfile) as data_file:
         try:
-            abi = json.safe_load(data_file)
+            abi = json.load(data_file)
         except json.JSONDecodeError as e:
             print(e)
             sys.exit(1)
