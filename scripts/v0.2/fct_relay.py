@@ -7,20 +7,28 @@ param = fct.loadparam()
 # > Relay info
 relayHost = param['relay']['host']
 relayPort = param['relay']['port']
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+def createConnection():
+    s = socket.create_connection((relayHost, relayPort))
+    print("Socket relay - Connection on {}".format(relayPort))
+    return s
+
+
+def closeConnection(s):
+    print("Socket relay - Close")
+    s.close()
+
 
 def readData(channels):
 
-    socket.connect((relayHost, relayPort))
-    print("Socket relay - Connection on {}".format(relayPort))
+    s = createConnection()
 
     data = "ReadDATA|" + str(channels)
-    socket.send(data.encode())
-    resp = socket.recv(255)
-    print(resp.decode())
+    s.send(data.encode())
+    resp = s.recv(255)
 
-    print("Socket relay - Close")
-    socket.close()
+    closeConnection(s)
 
     listStates = yaml.load(resp)
     return listStates
@@ -28,12 +36,12 @@ def readData(channels):
 
 def switchChannels(data):
 
-    socket.connect((relayHost, relayPort))
-    print("Socket relay - Connection on {}".format(relayPort))
+    s = createConnection()
 
-    socket.send(data.encode())
-    resp = socket.recv(255)
+    s.send(data.encode())
+    resp = s.recv(255)
     print(resp.decode())
 
-    print("Close")
-    socket.close()
+    closeConnection(s)
+
+    return resp.decode()
