@@ -11,6 +11,7 @@ node:
   login: ''
   password: ''
   limit: 1000
+  delta: 200
   channel: 0
 sellers:
   seller1:

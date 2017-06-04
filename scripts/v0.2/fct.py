@@ -28,14 +28,20 @@ def loadabi(jsonfile):
 
 def getDateTime(url, dataTime, headersTime):
     try:
-        result = requests.post(url + '/api/time', headers=headersTime, data=dataTime)
-        parsed_json = json.loads(result.text)
-        return parsed_json['data']
+        try:
+            result = requests.post(url + '/api/time', headers=headersTime, data=dataTime)
+        except Exception as e:
+            print(e)
+        else:
+            parsed_json = json.loads(result.text)
+            return parsed_json['data']
     except json.JSONDecodeError as e:
-        print(e)
+        print("ERROR -  getDateTime( : " + str(e))
+        return ""
 
 
 def getEnergySum(url, sensorId, dataTime, headersTime, t0, t1):
+    print("GetEnergySum")
     sumEnergy = 0
     timestp = 0
 
@@ -44,15 +50,12 @@ def getEnergySum(url, sensorId, dataTime, headersTime, t0, t1):
     except json.JSONDecodeError as e:
         print(e)
     else:
-        print('result : ' + str(result))
         parsed_json = json.loads(result.text)
-        print('parsed_json : ' + str(parsed_json))
         for n in range(0, len(parsed_json['data'])):
-            print("parsed_json['data'][n]['timestamp'] : " + str(parsed_json['data'][n]['timestamp']))
             # TODO : check data from citizenwatt
             if timestp < parsed_json['data'][n]['timestamp']:
                 watt = int(parsed_json['data'][n]['value']) # /100 for test and debug
-                print('watt + ' + str(watt))
+                print(' > watt = ' + str(watt))
                 sumEnergy += watt
                 timestp = parsed_json['data'][n]['timestamp']
     return sumEnergy

@@ -20,6 +20,7 @@ nodeURL = param['node']['url']
 nodeLogin = param['node']['login']
 nodePswd = param['node']['password']
 sensorId = param['node']['sensorId']
+energyDelta = param['node']['delta']
 headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
@@ -63,6 +64,7 @@ if nodeChannel:
     myEnergy = False
 else:
     myEnergy = True  # default : state 0 and NC
+print("myEnergy = " + str(myEnergy))
 
 
 if not myEnergy:  # one of sellers is connected
@@ -81,12 +83,17 @@ if not myEnergy:  # one of sellers is connected
                 data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
                 fct_relay.switchChannels(data)
                 currentSeller = ""
+else:
+    currentSeller = ""
+print("currentSeller = " + currentSeller)
 
 
-time0 = fct.getDateTime(nodeURL, dataTime, headersTime)   # TODO : better save and use the latest time processed
+time0 = fct.getDateTime(nodeURL, dataTime, headersTime) # TODO : better save and use the latest time processed
 
 
 while 1:
+
+    print("==========================")
     # delay to define
     time.sleep(16)
 
@@ -94,7 +101,7 @@ while 1:
     time1 = fct.getDateTime(nodeURL, dataTime, headersTime)
     sumWatt = fct.getEnergySum(nodeURL, sensorId, dataTime, headersTime, time0, time1)
 
-    print('time : ' + time.strftime("%D %H:%M:%S", time.localtime(int(time1))) + ', sumWatt = ' + str(sumWatt))
+    print(' > time : ' + time.strftime("%D %H:%M:%S", time.localtime(int(time1))) + ', sumWatt = ' + str(sumWatt))
 
     time0 = time1
 
@@ -106,18 +113,20 @@ while 1:
             # unlock account
             print('Unlock Account')
             unlockOK = web3.personal.unlockAccount(nodeAddress, nodeAccountPswd)
+            # TODO : error handling
             print(' > unlockOK = ' + str(unlockOK))
 
             if currentSeller != "":
-                # check allowance
+                # check allowance (may have changer since the last call)
                 allowance = daisee.call().allowance(currentSeller, nodeAddress)
+                print(" > allowance = " + str(allowance) + " - sumwatt = " + str(sumWatt))
 
                 if allowance < sumWatt:
 
                     try:
                         result = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract,
                                                                                   currentSeller,
-                                                                                  sumWatt + 200)
+                                                                                  sumWatt + energyDelta)
                     except Exception as e:
                         print('ERROR - function buyEnergy : ' + str(e))
                         channel = relaySellersChannels[listConnectedSellers.index(currentSeller)]
@@ -126,33 +135,23 @@ while 1:
                         currentSeller = ""
 
                     else:
-                        print(' > result = ' + str(result))
+                        print(' > result = buyEnergy ' + str(result))
 
-                        # updating Energy Consumption
-                        print('ConsumeEnergy')
-                        try:
-                            result = daisee.transact({'from': nodeAddress}).consumeEnergy(currentSeller, sumWatt)
-                        except Exception as e:
-                            print('ERROR - function consumeEnergy : ' + str(e))
-                        else:
-                            print(' > result = ' + str(result))
-
+                # updating Energy Consumption
+                print('ConsumeEnergy')
+                try:
+                    result = daisee.transact({'from': nodeAddress}).consumeEnergy(currentSeller, sumWatt)
+                except Exception as e:
+                    print('ERROR - function consumeEnergy : ' + str(e))
                 else:
-                    # updating Energy Consumption
-                    print('ConsumeEnergy')
-                    try:
-                        result = daisee.transact({'from': nodeAddress}).consumeEnergy(currentSeller, sumWatt)
-                    except Exception as e:
-                        print('ERROR - function consumeEnergy : ' + str(e))
-                    else:
-                        print(' > result = ' + str(result))
+                    print(' > result (transaction hash) = ' + str(result))
 
             else:
 
                 # updating Energy Consumption
                 print('ConsumeEnergy')
                 result = daisee.transact({'from': nodeAddress}).consumeEnergy(nodeAddress, sumWatt)
-                print(' > result = ' + str(result))
+                print(' > result (transaction hash) = ' + str(result))
 
 
         # Producer
@@ -165,4 +164,4 @@ while 1:
             # to update Energy balance (producer)
             print('SetProduction')
             result = daisee.transact({'from': nodeAddress}).setProduction(sumWatt)
-            print(' > result = ' + str(result))
+            print(' > result (transaction hash) = ' + str(result))
