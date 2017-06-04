@@ -18,5 +18,4 @@ sellers:
     channel: 1
 relay:
   host: ''
-  port: ''
-
+  port:

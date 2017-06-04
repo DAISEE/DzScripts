@@ -1,8 +1,8 @@
 from web3 import Web3, KeepAliveRPCProvider
 import fct
-import socket
+import fct_relay
 import time
-import yaml
+
 
 param = fct.loadparam()
 
@@ -50,22 +50,13 @@ daisee = web3.eth.contract(abi=daiseeAbi, address=daiseeAddress)
 
 # > Getting the state of relay
 # Default : relay state = False
-# The user consumes his own energy (i.e. from his own solar panel or his "provider" (<> sellers) => relay channel = NC
+# The user consumes his own energy (i.e. from his own solar panel or his "provider" (!= sellers) => relay channel = NC
 # Sellers channels : NO
 # Energy form one seller at a time
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.connect((relayHost, relayPort))
-print("Socket relay - Connection on {}".format(relayPort))
-
-socket.send(b"ReadDATA|0,1")
-resp = socket.recv(255)
-print(resp.decode())
-
-print("Socket relay - Close")
-socket.close()
-
-listStates = yaml.load(resp)
-print(type(listStates))
+listChannels = relaySellersChannels
+listChannels.append(nodeChannel)
+listChannels = str(listChannels).strip('[]')
+listStates = fct_relay.readData(listChannels)
 
 nodeChannelState = listStates[nodeChannel]
 if nodeChannel:
@@ -74,7 +65,7 @@ else:
     myEnergy = True  # default : state 0 and NC
 
 
-if not myEnergy: # one of sellers is connected
+if not myEnergy:  # one of sellers is connected
     for channel in relaySellersChannels:
         if listStates[channel]:  # if channel state = 1, energy is provided
 
@@ -87,18 +78,8 @@ if not myEnergy: # one of sellers is connected
 
             if allowance <= 0:
 
-                socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                socket.connect((relayHost, relayPort))
-                print("Socket relay - Connection on {}".format(relayPort))
-
                 data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
-                socket.send(data.encode())
-                resp = socket.recv(255)
-                print(resp.decode())
-
-                print("Close")
-                socket.close()
-
+                fct_relay.switchChannels(data)
                 currentSeller = ""
 
 
@@ -127,50 +108,58 @@ while 1:
             unlockOK = web3.personal.unlockAccount(nodeAddress, nodeAccountPswd)
             print(' > unlockOK = ' + str(unlockOK))
 
-            # updating Energy balance (consumer)
-            print('ConsumeEnergy')
-            result = daisee.transact({'from': nodeAddress}).consumeEnergy(sumWatt)
-            print(' > result = ' + str(result))
+            if currentSeller != "":
+                # check allowance
+                allowance = daisee.call().allowance(currentSeller, nodeAddress)
 
-            # if not myEnergy:
-            #    bEnergy = bEnergy + sumWatt
-            #    if bEnergy > 200:
-            #        myEnergy = True
+                if allowance < sumWatt:
 
-            # getting the energy balance
-            print('Get Energy Balance')
-            EnergyBalance = daisee.call({'from': param[node]['address']}).getEnergyBalance()
-            print(' > EnergyBalance = ' + str(EnergyBalance))
+                    try:
+                        result = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract,
+                                                                                  currentSeller,
+                                                                                  sumWatt + 200)
+                    except Exception as e:
+                        print('ERROR - function buyEnergy : ' + str(e))
+                        channel = relaySellersChannels[listConnectedSellers.index(currentSeller)]
+                        data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
+                        fct_relay.switchChannels(data)
+                        currentSeller = ""
 
-            # if energy balance is too low, a energy transaction is triggered
-            if EnergyBalance < param[node]['limit']:
+                    else:
+                        print(' > result = ' + str(result))
 
-                myEnergy = False
+                        # updating Energy Consumption
+                        print('ConsumeEnergy')
+                        try:
+                            result = daisee.transact({'from': nodeAddress}).consumeEnergy(currentSeller, sumWatt)
+                        except Exception as e:
+                            print('ERROR - function consumeEnergy : ' + str(e))
+                        else:
+                            print(' > result = ' + str(result))
 
-                # unlock account
-                print('Unlock Account')
-                unlockOK = web3.personal.unlockAccount(nodeAddress, param[node]['accountpswd'])
-                print(' > unlockOK = ' + str(unlockOK))
-
-                print('Buy Energy')
-                # beware of tokens allowed (see function approve() in token smart contract)
-                # watt : to adjust
-                watt = 200
-                # for DEBUG/TESTING, node2 is selected by default
-                seller = param['node2']['address']
-                try:
-                    ret = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract, seller, watt)
-                except Exception as e:
-                    print('ERROR - function buyEnergy : ' + str(e))
                 else:
-                    print(' > result = ' + str(result))
-                    #switchEnergy(False)
+                    # updating Energy Consumption
+                    print('ConsumeEnergy')
+                    try:
+                        result = daisee.transact({'from': nodeAddress}).consumeEnergy(currentSeller, sumWatt)
+                    except Exception as e:
+                        print('ERROR - function consumeEnergy : ' + str(e))
+                    else:
+                        print(' > result = ' + str(result))
+
+            else:
+
+                # updating Energy Consumption
+                print('ConsumeEnergy')
+                result = daisee.transact({'from': nodeAddress}).consumeEnergy(nodeAddress, sumWatt)
+                print(' > result = ' + str(result))
+
 
         # Producer
         else:
             # unlock account
             print('Unlock Account')
-            unlockOK = web3.personal.unlockAccount(nodeAddress, param[node]['accountpswd'])
+            unlockOK = web3.personal.unlockAccount(nodeAddress, nodeAccountPswd)
             print(' > unlockOK = ' + str(unlockOK))
 
             # to update Energy balance (producer)
