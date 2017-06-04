@@ -60,33 +60,31 @@ listChannels = str(listChannels).strip('[]')
 listStates = fct_relay.readData(listChannels)
 
 nodeChannelState = listStates[nodeChannel]
-if nodeChannel:
+if nodeChannelState:
     myEnergy = False
 else:
     myEnergy = True  # default : state 0 and NC
 print("myEnergy = " + str(myEnergy))
 
-
-if not myEnergy:  # one of sellers is connected
+print("Defining current seller")
+if not myEnergy:
     for channel in relaySellersChannels:
         if listStates[channel]:  # if channel state = 1, energy is provided
-
             currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
 
             # control that user can still consume energy
             # if not, switch to the user provider
             allowance = daisee.call().allowance(currentSeller, nodeAddress)
-            print("allowance = " + str(allowance))
 
             if allowance <= 0:
 
                 data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
                 fct_relay.switchChannels(data)
                 currentSeller = ""
+        break  # one of sellers is connected
 else:
     currentSeller = ""
-print("currentSeller = " + currentSeller)
-
+print("> currentSeller = " + currentSeller)
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime) # TODO : better save and use the latest time processed
 
@@ -122,13 +120,13 @@ while 1:
                 print(" > allowance = " + str(allowance) + " - sumwatt = " + str(sumWatt))
 
                 if allowance < sumWatt:
-
+                    print("BuyEnergy")
                     try:
                         result = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract,
                                                                                   currentSeller,
                                                                                   sumWatt + energyDelta)
                     except Exception as e:
-                        print('ERROR - function buyEnergy : ' + str(e))
+                        print('> ERROR - function buyEnergy : ' + str(e))
                         channel = relaySellersChannels[listConnectedSellers.index(currentSeller)]
                         data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
                         fct_relay.switchChannels(data)
@@ -142,12 +140,11 @@ while 1:
                 try:
                     result = daisee.transact({'from': nodeAddress}).consumeEnergy(currentSeller, sumWatt)
                 except Exception as e:
-                    print('ERROR - function consumeEnergy : ' + str(e))
+                    print(' > ERROR - function consumeEnergy : ' + str(e))
                 else:
                     print(' > result (transaction hash) = ' + str(result))
 
             else:
-
                 # updating Energy Consumption
                 print('ConsumeEnergy')
                 result = daisee.transact({'from': nodeAddress}).consumeEnergy(nodeAddress, sumWatt)
