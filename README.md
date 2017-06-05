@@ -1,17 +1,23 @@
 # Scripts
-Scripts connecting the CitizenWatt Application, Ethereum and a relay.
+Scripts connecting the CitizenWatt Application, Ethereum and a relay, to switch energy providers.
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/1f4407d50c964153a6aec1545a49a378)](https://www.codacy.com/app/SamR1/Scripts?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=DAISEE/Scripts&amp;utm_campaign=Badge_Grade)
 
-## Description 
-Two versions are present :
-- [proto v0.1](https://github.com/DAISEE/Prototypes#prototype-v01) : **scripts/dz_interaction.py**    
-tested with an Arduino Uno and a [MicroBot Relay Shield V2](http://www.microbot.it/en/product/87/Relay-Shield-V2.html), it uses the following sketch : [arduino-relay.ino](arduino-relay/arduino-relay.ino)  
-![MicroBot Relay Shield V2](images/microbit.jpg)  
-  
-- [proto v0.2](https://github.com/DAISEE/Prototypes#prototype-v02) : **scripts/dz_interaction_rpi.py** ()  
-tested with [4-Channel Relay from Sunfounder](http://wiki.sunfounder.cc/index.php?title=4-Channel_High_Level_Trigger_Relay), directly connected to a dedicated Raspberry Pi. The others nodes interact with this Raspberry Pi through sockets.    
-![4-Channel Relay from Sunfounder](images/sunfounder.jpg)
-  
-  
 _work in progress_ 
+
+## Description
+
+2 scripts are present (for [proto v0.2](https://github.com/DAISEE/Prototypes#prototype-v02)):
+* **server_relay.py** : script for the Raspberry Pi controlling the relay. The others nodes interact with this Raspberry Pi through sockets.  
+tested with [4-Channel Relay from Sunfounder](http://wiki.sunfounder.cc/index.php?title=4-Channel_High_Level_Trigger_Relay), directly connected to a dedicated Raspberry Pi
+.   
+![4-Channel Relay from Sunfounder](images/sunfounder.jpg)
+* **client_interaction.py** : script for the "nodes" (on which the CitizenWatt App and Ethereum are running) 
+  
+(_version for proto v0.1 : see [release](https://github.com/DAISEE/Scripts/releases/tag/v0.1-beta)_)
+
+## Prerequisites
+
+* [web3.py](https://github.com/pipermerriam/web3.py)
+* PySerial
+* [PyYAML](http://pyyaml.org/)
