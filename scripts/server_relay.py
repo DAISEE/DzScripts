@@ -4,9 +4,12 @@ import yaml
 
 
 def read_data(relay):
-    # relay
-    # format: list
-    # example: [0, 1]
+    """    
+    :param relay: list of channels
+        # format: list
+        # example: [0, 1]
+    :return: state of each channel
+    """
 
     relayState = {}
     for channel in relay:
@@ -20,9 +23,13 @@ def read_data(relay):
 
 
 def switch_energy(relay):
+    """   
+    :param relay: 
+        # format: dict
+        # example: {0: False, 1: True}      
+    :return: a boolean 
+    """
 
-    # format: dict
-    # example: {0: False, 1: True}
     try:
         for channel, state in relay.items():
             GPIO.output(Relay_channel[channel], state)

@@ -27,7 +27,7 @@ dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 # > Sellers nodes to which the user IS CONNECTED through the relay (may differ from vendors to whom the user purchased
 # energy on the blockchain)
 # > sellers have to be defined in parameter file (not automatically detected)
-# > for now only 2 nodes are used => 1 seller
+# > for now only 2 nodes are used => 1 consumer and 1 seller (producer)
 nodeChannel = param['node']['channel']
 connectedSellers = param['sellers']
 
@@ -51,8 +51,9 @@ daisee = web3.eth.contract(abi=daiseeAbi, address=daiseeAddress)
 
 # > Getting the state of relay
 # Default : relay state = False
-# The user consumes his own energy (i.e. from his own solar panel or his "provider" (!= sellers) => relay channel = NC
-# Sellers channels : NO
+# The user consumes his own energy (i.e. from his own solar panel or his "provider" (!= sellers)
+#   => relay channel contact = NC (normally closed)
+# Sellers channels contacts = NO (normally open)
 # Energy form one seller at a time
 listChannels = relaySellersChannels
 listChannels.append(nodeChannel)
@@ -67,6 +68,7 @@ else:
 print("myEnergy = " + str(myEnergy))
 
 print("Defining current seller")
+currentSeller = ""
 if not myEnergy:
     for channel in relaySellersChannels:
         if listStates[channel]:  # if channel state = 1, energy is provided
@@ -82,8 +84,6 @@ if not myEnergy:
                 fct_relay.switchChannels(data)
                 currentSeller = ""
         break  # one of sellers is connected
-else:
-    currentSeller = ""
 print("> currentSeller = " + currentSeller)
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime) # TODO : better save and use the latest time processed
