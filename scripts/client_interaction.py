@@ -31,6 +31,7 @@ nodePswd = param['node']['password']
 sensorId = param['node']['sensorId']
 energyDelta = param['node']['delta']
 hasFuelGauge = param['node']['fuelgauge']
+threshold = param['node']['limit']
 headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
@@ -67,6 +68,7 @@ daisee = web3.eth.contract(abi=daiseeAbi, address=daiseeAddress)
 
 # > Getting the state of charge of the battery
 # data from CitizenWatt App running on the same node (from fuel gauge sensor)
+soc = 100
 if hasFuelGauge:
     soc = fct.getSoC(filename)
     print("Battery state of charge = " + str(soc))
@@ -87,7 +89,10 @@ if hasSellers:
     if nodeChannelState:
         myEnergy = False
     else:
-        myEnergy = True  # default : state 0 and NC
+        if hasFuelGauge and soc < threshold:
+            myEnergy = False
+        else:
+            myEnergy = True  # default : state 0 and NC
     print("myEnergy = " + str(myEnergy))
 
     print("Defining current seller")
@@ -104,8 +109,9 @@ if hasSellers:
                 if allowance <= 0:
 
                     data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
-                    fct_relay.switchChannels(data)
+                    fct_relay.switchChannels(data)  # switch to user energy (even the Soc is under ther threshold)
                     currentSeller = ""
+
             break  # one of sellers is connected
     print("> currentSeller = " + currentSeller)
 
@@ -172,6 +178,17 @@ while 1:
                 print('ConsumeEnergy')
                 result = daisee.transact({'from': nodeAddress}).consumeEnergy(nodeAddress, sumWatt)
                 print(' > result (transaction hash) = ' + str(result))
+
+                # check state of charge
+                soc = fct.getSoC(filename)
+                print("Soc = " + str(soc))
+                if soc > threshold:
+                    print("soc > threshold")
+                    channel = 1  # TODO : use a function to define the channel
+                    data = "{" + str(nodeChannel) + ": True, " + str(channel) + ": True}"
+                    fct_relay.switchChannels(data)
+                    currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
+                    print("Update current seller : " + str(currentSeller))
 
 
         # Producer
