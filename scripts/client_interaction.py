@@ -182,7 +182,7 @@ while 1:
                 # check state of charge
                 soc = fct.getSoC(filename)
                 print("Soc = " + str(soc))
-                if soc > threshold:
+                if soc < threshold:
                     print("soc > threshold")
                     channel = 1  # TODO : use a function to define the channel
                     data = "{" + str(nodeChannel) + ": True, " + str(channel) + ": True}"
