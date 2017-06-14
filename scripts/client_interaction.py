@@ -37,9 +37,12 @@ dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
 # > Sellers nodes to which the user IS CONNECTED through the relay (may differ from vendors to whom the user purchased
 # energy on the blockchain)
-# > sellers have to be defined in parameter file (not automatically detected)
-# > for now only 2 nodes are used => 1 consumer and 1 seller (producer)
-nodeChannel = param['node']['channel']
+# > Each node is connected to 2 channels :
+# - first channel is connected to energy source
+# - second channel is connected to the components consuming energy
+# > Sellers have to be defined in parameter file (not automatically detected)
+# > For now only 2 nodes are used => 1 consumer (channel 2 and 3) and 1 seller (producer channel 0 and 1)
+nodeChannel = param['node']['channel'] #channel connected to energy source
 connectedSellers = param['sellers']
 currentSeller = ""
 
@@ -107,8 +110,8 @@ if hasSellers:
                 allowance = daisee.call().allowance(currentSeller, nodeAddress)
 
                 if allowance <= 0:
-
-                    data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
+                    data = "{" + str(nodeChannel) + ": False, " + str(nodeChannel + 1) + ": False, " + \
+                                 str(channel) + ": False, " + str(channel + 1) + ": False}"
                     fct_relay.switchChannels(data)  # switch to user energy (even the Soc is under ther threshold)
                     currentSeller = ""
 
@@ -157,7 +160,8 @@ while 1:
                     except Exception as e:
                         print('> ERROR - function buyEnergy : ' + str(e))
                         channel = relaySellersChannels[listConnectedSellers.index(currentSeller)]
-                        data = "{" + str(nodeChannel) + ": False, " + str(channel) + ": False}"
+                        data = "{" + str(nodeChannel) + ": False, " + str(nodeChannel + 1) + ": False, " + \
+                                     str(channel) + ": False, " + str(channel + 1) + ": False}"
                         fct_relay.switchChannels(data)
                         currentSeller = ""
 
@@ -184,8 +188,10 @@ while 1:
                 print("Soc = " + str(soc))
                 if soc < threshold:
                     print("soc > threshold")
-                    channel = 1  # TODO : use a function to define the channel
-                    data = "{" + str(nodeChannel) + ": True, " + str(channel) + ": True}"
+                    channel = 0  # TODO : use a function to define the channel
+                    data = "{" + str(nodeChannel) + ": True, " + str(nodeChannel + 1) + ": True, " + \
+                                 str(channel) + ": True, " + str(channel + 1) + ": True}"
+                    print(">>>> data = " + str(data))
                     fct_relay.switchChannels(data)
                     currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
                     print("Update current seller : " + str(currentSeller))
