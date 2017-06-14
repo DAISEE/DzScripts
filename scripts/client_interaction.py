@@ -35,18 +35,22 @@ threshold = param['node']['limit']
 headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
-# > Sellers nodes to which the user IS CONNECTED through the relay (may differ from vendors to whom the user purchased
-# energy on the blockchain)
-# > Each node is connected to 2 channels :
-# - first channel is connected to energy source
+# PROTO V0.2 HYPOTHESES
+# =====================
+# > Sellers nodes to which the user IS CONNECTED through the relay may differ from vendors to whom the user purchased
+# energy on the blockchain
+# > Each node (consumer or producer) is connected to 2 channels :
+# - first channel is connected to energy source (= "energy" channel)
 # - second channel is connected to the components consuming energy
-# > Sellers have to be defined in parameter file (not automatically detected)
-# > For now only 2 nodes are used => 1 consumer (channel 2 and 3) and 1 seller (producer channel 0 and 1)
-nodeChannel = param['node']['channel'] #channel connected to energy source
+# > Sellers have to be defined in parameter file (not automatically detected). All connected sellers can sell energy
+# (no verification of production capacity for the moment)
+# > For now only 2 nodes are used => 1 consumer (channels 2 and 3) and 1 seller (producer, channels 0 and 1)
+nodeChannel = param['node']['channel']
 connectedSellers = param['sellers']
 currentSeller = ""
 
 hasSellers = False
+# Address of the sellers' nodes and the "energy" channel to which they are connected (see file parameter)
 if connectedSellers != "":
     hasSellers = True
 
@@ -70,18 +74,18 @@ daisee = web3.eth.contract(abi=daiseeAbi, address=daiseeAddress)
 
 
 # > Getting the state of charge of the battery
-# data from CitizenWatt App running on the same node (from fuel gauge sensor)
+# data from CitizenWatt App running on the same node (from fuel gauge sensor for a Consumer Node - acs712-soc branch)
 soc = 100
 if hasFuelGauge:
     soc = fct.getSoC(filename)
     print("Battery state of charge = " + str(soc))
 
 # > Getting the state of relay
-# Default : relay state = False
-# The user consumes his own energy (i.e. from his own solar panel or his "provider" (!= sellers)
+# Default : Relay state = False
+# The user consumes his own energy (i.e. from his own solar panel or his "provider" (!= sellers))
 #   => relay channel contact = NC (normally closed)
 # Sellers channels contacts = NO (normally open)
-# Energy form one seller at a time
+# Energy form one seller at a time (= only one seller "energy" channel can be closed)
 if hasSellers:
     listChannels = relaySellersChannels
     listChannels.append(nodeChannel)
@@ -89,17 +93,20 @@ if hasSellers:
     listStates = fct_relay.readData(listChannels)
 
     nodeChannelState = listStates[nodeChannel]
+    # reminder : Consumer node
+    # - False = closed (it consumes its "own" energy)
+    # - True = open
     if nodeChannelState:
         myEnergy = False
     else:
         if hasFuelGauge and soc < threshold:
             myEnergy = False
         else:
-            myEnergy = True  # default : state 0 and NC
+            myEnergy = True  # default : state False and NC
     print("myEnergy = " + str(myEnergy))
 
-    print("Defining current seller")
 
+    print("Defining current seller")
     if not myEnergy:
         for channel in relaySellersChannels:
             if listStates[channel]:  # if channel state = 1, energy is provided
@@ -109,13 +116,13 @@ if hasSellers:
                 # if not, switch to the user provider
                 allowance = daisee.call().allowance(currentSeller, nodeAddress)
 
-                if allowance <= 0:
+                if allowance == 0:
                     data = "{" + str(nodeChannel) + ": False, " + str(nodeChannel + 1) + ": False, " + \
                                  str(channel) + ": False, " + str(channel + 1) + ": False}"
-                    fct_relay.switchChannels(data)  # switch to user energy (even the Soc is under ther threshold)
+                    fct_relay.switchChannels(data)  # switch to user energy (even the Soc is under the threshold)
                     currentSeller = ""
 
-            break  # one of sellers is connected
+                break  # one of sellers is connected
     print("> currentSeller = " + currentSeller)
 
 time0 = fct.getDateTime(nodeURL, dataTime, headersTime) # TODO : better save and use the latest time processed
@@ -147,6 +154,7 @@ while 1:
             print(' > unlockOK = ' + str(unlockOK))
 
             if currentSeller != "":
+
                 # check allowance (may have changer since the last call)
                 allowance = daisee.call().allowance(currentSeller, nodeAddress)
                 print(" > allowance = " + str(allowance) + " - sumwatt = " + str(sumWatt))
@@ -178,23 +186,76 @@ while 1:
                     print(' > result (transaction hash) = ' + str(result))
 
             else:
+                # currentSeller == ""
+                # => the Node consumes its "own" energy
+                # => All channels' states are False
+
                 # updating Energy Consumption
                 print('ConsumeEnergy')
                 result = daisee.transact({'from': nodeAddress}).consumeEnergy(nodeAddress, sumWatt)
                 print(' > result (transaction hash) = ' + str(result))
 
-                # check state of charge
+                # check the State of charge
                 soc = fct.getSoC(filename)
-                print("Soc = " + str(soc))
+                print("State of charge (soc) = " + str(soc))
                 if soc < threshold:
-                    print("soc > threshold")
-                    channel = 0  # TODO : use a function to define the channel
-                    data = "{" + str(nodeChannel) + ": True, " + str(nodeChannel + 1) + ": True, " + \
-                                 str(channel) + ": True, " + str(channel + 1) + ": True}"
-                    print(">>>> data = " + str(data))
-                    fct_relay.switchChannels(data)
-                    currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
-                    print("Update current seller : " + str(currentSeller))
+
+                    print(" > soc < threshold")
+                    for seller in listConnectedSellers:
+
+                        print(" > seller = " + str(seller))
+                        allowance = daisee.call().allowance(seller, nodeAddress)
+                        print(" > allowance = " + str(allowance))
+
+                        if allowance > 0:
+
+                            channel = relaySellersChannels[listConnectedSellers.index(seller)]
+                            print(" > channel = " + str(channel))
+
+                            # channel = 0  # TODO : use a function to define the channel
+                            data = "{" + str(nodeChannel) + ": True, " + str(nodeChannel + 1) + ": True, " + \
+                                         str(channel) + ": True, " + str(channel + 1) + ": True}"
+                            print(" > data = " + str(data))
+                            fct_relay.switchChannels(data)
+                            # currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
+                            currentSeller = seller
+                            print(" > update current seller : " + str(currentSeller))
+                            break
+
+                    # if all sellers allowances are equal to zero, the current node buys energy form the first seller
+                    # connected
+                    if currentSeller == "":
+
+                        seller = listConnectedSellers[0]
+                        channel = relaySellersChannels[0]
+                        print("BuyEnergy from seller : " + seller + ", channel : " + str(channel))
+
+                        try:
+                            result = daisee.transact({'from': nodeAddress}).buyEnergy(tokenContract,
+                                                                                      seller,
+                                                                                      sumWatt + energyDelta)
+
+                        except Exception as e:
+                            print('> ERROR - function buyEnergy : ' + str(e))
+
+                            data = "{" + str(nodeChannel) + ": False, " + str(nodeChannel + 1) + ": False, " + \
+                                   str(channel) + ": False, " + str(channel + 1) + ": False}"
+                            print(" > data = " + str(data))
+                            fct_relay.switchChannels(data)
+
+                            currentSeller = ""
+                            print(" > update current seller : " + str(currentSeller))
+
+                        else:
+                            print(' > result = buyEnergy ' + str(result))
+
+                            data = "{" + str(nodeChannel) + ": True, " + str(nodeChannel + 1) + ": True, " + \
+                                   str(channel) + ": True, " + str(channel + 1) + ": True}"
+                            print(" > data = " + str(data))
+                            fct_relay.switchChannels(data)
+
+                            currentSeller = seller
+                            print(" > update current seller : " + str(currentSeller))
 
 
         # Producer

@@ -54,10 +54,14 @@ def getEnergySum(url, sensorId, dataTime, headersTime, t0, t1):
         for n in range(0, len(parsed_json['data'])):
             # TODO : check data from citizenwatt
             if timestp < parsed_json['data'][n]['timestamp']:
-                watt = int(parsed_json['data'][n]['value']) # /100 for test and debug
+                watt = int(parsed_json['data'][n]['value'])
                 print(' > watt = ' + str(watt))
                 sumEnergy += watt
                 timestp = parsed_json['data'][n]['timestamp']
+
+    if sumEnergy < 0:
+        sumEnergy = 0
+
     return sumEnergy
 
 def getSoC(filename):
