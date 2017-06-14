@@ -40,7 +40,7 @@ def switch_energy(relay):
     return success
 
 # connection to the relay
-Relay_channel = [17, 18]
+Relay_channel = [17, 18, 27, 22]
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(Relay_channel, GPIO.OUT, initial=GPIO.LOW)
 
