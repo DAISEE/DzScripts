@@ -13,6 +13,7 @@ node:
   limit: 1000
   delta: 200
   channel: 0
+  fuelgauge: False
 sellers:
   seller1:
     account: ''

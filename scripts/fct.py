@@ -41,7 +41,7 @@ def getDateTime(url, dataTime, headersTime):
 
 
 def getEnergySum(url, sensorId, dataTime, headersTime, t0, t1):
-    print("GetEnergySum")
+    print("fct.GetEnergySum")
     sumEnergy = 0
     timestp = 0
 
@@ -54,8 +54,32 @@ def getEnergySum(url, sensorId, dataTime, headersTime, t0, t1):
         for n in range(0, len(parsed_json['data'])):
             # TODO : check data from citizenwatt
             if timestp < parsed_json['data'][n]['timestamp']:
-                watt = int(parsed_json['data'][n]['value']) # /100 for test and debug
+                watt = int(parsed_json['data'][n]['value'])
                 print(' > watt = ' + str(watt))
                 sumEnergy += watt
                 timestp = parsed_json['data'][n]['timestamp']
+
+    if sumEnergy < 0:
+        sumEnergy = 0
+
     return sumEnergy
+
+def getSoC(filename):
+    print("fct.getSoC")
+    FileTemp = open(filename, 'r')
+
+    for i in range(1):
+        for attempt in range(3):
+            try:
+                measure = FileTemp.read()
+                measure = measure.split(',')
+                data = measure[0].split('|')
+                soc = float(data[0])
+            except Exception as e:
+                print("ERROR : Incorrect data from sensor log - attempt: " + str(attempt + 1) + " : " + str(e))
+                continue
+            break
+        else:
+            print("ERROR : Incorrect data from sensor log > all attempts failed. \r\nExiting")
+            sys.exit(1)
+    return soc
