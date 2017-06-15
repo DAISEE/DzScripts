@@ -35,6 +35,7 @@ threshold = param['node']['limit']
 headersTime = {'Content-Type': 'application/json', }
 dataTime = 'login=' + nodeLogin + '&password=' + nodePswd
 
+
 # PROTO V0.2 HYPOTHESES
 # =====================
 # > Sellers nodes to which the user IS CONNECTED through the relay may differ from vendors to whom the user purchased
@@ -212,12 +213,10 @@ while 1:
                             channel = relaySellersChannels[listConnectedSellers.index(seller)]
                             print(" > channel = " + str(channel))
 
-                            # channel = 0  # TODO : use a function to define the channel
                             data = "{" + str(nodeChannel) + ": True, " + str(nodeChannel + 1) + ": True, " + \
                                          str(channel) + ": True, " + str(channel + 1) + ": True}"
                             print(" > data = " + str(data))
                             fct_relay.switchChannels(data)
-                            # currentSeller = listConnectedSellers[relaySellersChannels.index(channel)]
                             currentSeller = seller
                             print(" > update current seller : " + str(currentSeller))
                             break
@@ -256,7 +255,6 @@ while 1:
 
                             currentSeller = seller
                             print(" > update current seller : " + str(currentSeller))
-
 
         # Producer
         else:
